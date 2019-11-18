@@ -5,7 +5,9 @@ import {
   GET_ITEMS_FAIL,
   LOADING_ITEM,
   DELETE_ITEM_FAIL,
-  DELETE_ITEM_SUCCESS
+  DELETE_ITEM_SUCCESS,
+  EDIT_ITEM_SUCCESS,
+  EDIT_ITEM_FAIL
 } from './types';
 import {
   getWeeklyExpense,
@@ -15,7 +17,7 @@ import {
 import { setAlert } from './alert';
 import axios from 'axios';
 const base_url = 'https://finance-tracker-server.herokuapp.com';
-//const base_url = 'http://localhost:3500';
+// const base_url = 'http://localhost:3500';
 export const getItems = (startDate, endDate, userId) => async dispatch => {
   dispatch({
     type: LOADING_ITEM
@@ -41,7 +43,6 @@ export const getItems = (startDate, endDate, userId) => async dispatch => {
         payload: response.data
       });
     } else {
-      console.log(response)
       dispatch(setAlert(response.data.message, 'danger'));
       dispatch({
         type: GET_ITEMS_FAIL,
@@ -49,7 +50,6 @@ export const getItems = (startDate, endDate, userId) => async dispatch => {
       });
     }
   } catch (error) {
-    console.log(error)
     dispatch({
       type: GET_ITEMS_FAIL,
       payload: error.toString()
@@ -102,9 +102,53 @@ export const addItem = (
     });
   }
 };
+export const editItem = (
+  name,
+  description,
+  amount,
+  date,
+  userId,itemId
+) => async dispatch => {
+  const config = {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  };
+  const body = JSON.stringify({
+    name,
+    description,
+    amount,
+    date
+  });
+  try {
+    const response = await axios.put(
+      base_url + `/api/users/${userId}/item/${itemId}`,
+      body,
+      config
+    );
+    if (response.data.success) {
+      dispatch({
+        type: EDIT_ITEM_SUCCESS,
+        payload: response.data
+      });
+      dispatch(setAlert('A new Item was modified successfully', 'success'));
+      dispatch(getWeeklyExpense(userId));
+      dispatch(getMonthlyExpense(userId));
+      dispatch(getYearlyExpense(userId));
+    } else {
+      dispatch(setAlert(response.data.message, 'danger'));
+    }
+  } catch (error) {
+    dispatch(setAlert(error.toString(), 'danger'));
+
+    dispatch({
+      type: EDIT_ITEM_FAIL,
+      payload: error.toString()
+    });
+  }
+};
 
 export const deleteItem = (userId,itemId) => async (dispatch,getState) => {
-  console.log('trying to delete ' + itemId)
   const config = {
     headers: {
       'Content-Type': 'application/json'
@@ -118,7 +162,6 @@ export const deleteItem = (userId,itemId) => async (dispatch,getState) => {
   if (response.data.success){
     dispatch(setAlert(response.data.message,'success'))
     let new_items = getState().item.items.items.filter(function(value){
-      console.log(value)
       return value._id !== itemId
     })
     dispatch({
@@ -139,12 +182,9 @@ export const deleteItem = (userId,itemId) => async (dispatch,getState) => {
 
 export const deleteSelectedItems = (userId,items) => async (dispatch,getState)=> {
  
-  console.log('trying to delete selected items')
-  console.log(items)
   const body = JSON.stringify({
     "items":items
   });
-  console.log(body)
   const config = {
     headers: {
       'Content-Type': 'application/json'
@@ -159,7 +199,6 @@ export const deleteSelectedItems = (userId,items) => async (dispatch,getState)=>
   if (response.data.success){
     dispatch(setAlert(response.data.message,'success'))
     let new_items = getState().item.items.items.filter(function(item){
-      console.log(item)
       return !items.includes(item._id)
     })
     dispatch({
